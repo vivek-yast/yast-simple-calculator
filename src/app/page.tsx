@@ -43,6 +43,24 @@ const numberKeys = [
   { value: "3", label: "3" },
 ];
 
+function celebrate(origin = { x: 0.5, y: 0.75 }) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  void import("canvas-confetti").then(({ default: confetti }) => {
+    void confetti({
+      particleCount: 90,
+      spread: 75,
+      startVelocity: 42,
+      gravity: 0.9,
+      scalar: 0.9,
+      ticks: 180,
+      origin,
+      colors: ["#fb923c", "#fdba74", "#f8fafc", "#7dd3fc", "#334155"],
+      zIndex: 100,
+    });
+  });
+}
+
 export default function Home() {
   const [display, setDisplay] = useState("0");
   const [accumulator, setAccumulator] = useState<number | null>(null);
@@ -138,7 +156,7 @@ export default function Home() {
     [accumulator, clear, display, pendingOperator, waitingForOperand],
   );
 
-  const equals = useCallback(() => {
+  const equals = useCallback((origin?: { x: number; y: number }) => {
     if (display === "Error") return;
 
     if (pendingOperator && accumulator !== null && !waitingForOperand) {
@@ -160,6 +178,7 @@ export default function Home() {
       setAccumulator(null);
       setPendingOperator(null);
       setWaitingForOperand(true);
+      if (formatted !== "Error") celebrate(origin);
       return;
     }
 
@@ -170,11 +189,13 @@ export default function Home() {
         lastOperation.operand,
         lastOperation.operator,
       );
+      const formatted = formatResult(result);
       setCalculation(
         `${formatResult(leftOperand)} ${operatorSymbols[lastOperation.operator]} ${formatResult(lastOperation.operand)} =`,
       );
-      setDisplay(formatResult(result));
+      setDisplay(formatted);
       setWaitingForOperand(true);
+      if (formatted !== "Error") celebrate(origin);
     }
   }, [
     accumulator,
@@ -391,7 +412,12 @@ export default function Home() {
                 keyClass,
                 "bg-orange-400 text-xl text-slate-950 hover:bg-orange-300",
               )}
-              onClick={equals}
+              onClick={(event) =>
+                equals({
+                  x: event.clientX / window.innerWidth,
+                  y: event.clientY / window.innerHeight,
+                })
+              }
               aria-label="Calculate result"
             >
               =
